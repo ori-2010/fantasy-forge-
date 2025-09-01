@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Flora & Fauna</title>
+  <style>
+    :root{ --bg:#ffffff; --fg:#0a0a0a; --muted:#6b7280; --line:#ececec; }
+    *{ box-sizing:border-box }
+    body{ margin:0; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif; background:var(--bg); color:var(--fg); display:flex }
+
+    /* Sidebar */
+    .sidebar{ width:220px; border-right:1px solid var(--line); padding:28px 16px; background:#fff; height:100vh; position:sticky; top:0 }
+    .brand{ font-weight:800; margin-bottom:24px }
+    .nav{ display:flex; flex-direction:column; gap:8px }
+    .nav a{ display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:12px; color:inherit; text-decoration:none; cursor:pointer; user-select:none }
+    .nav a:hover{ background:#f7f7f7 }
+    .nav a.active{ background:#f1f5f9 }
+    .nav svg{ width:22px; height:22px; stroke:#475569 }
+
+    /* Main */
+    .main{ flex:1; overflow:auto }
+    header{ padding:24px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between }
+    header h1{ margin:0; font-size:24px }
+
+    .container{ max-width:980px; margin:0 auto; padding:24px }
+
+    /* Controls */
+    .controls{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:16px }
+    .btn{ background:#000; color:#fff; border:none; padding:8px 14px; border-radius:12px; cursor:pointer }
+    .btn.subtle{ background:#111 }
+    .btn[disabled], .btn.disabled{ background:#bdbdbd; color:#fff; cursor:default; pointer-events:none }
+
+    .icon-btn{ appearance:none; background:#fff; border:1px solid var(--line); border-radius:10px; padding:6px; cursor:pointer }
+    .icon{ width:18px; height:18px; display:block }
+
+    .circle-btn{ width:34px; height:34px; border-radius:999px; border:1px solid var(--line); background:#fff; display:inline-flex; align-items:center; justify-content:center; cursor:pointer }
+    .circle-btn.active{ background:#000; color:#fff }
+    .circle-btn svg{ width:18px; height:18px }
+
+    /* Dropdown panel */
+    .dropdown{ position:relative }
+    .panel{ position:absolute; top:44px; left:0; z-index:20; min-width:260px; background:#fff; border:1px solid var(--line); border-radius:12px; padding:12px; box-shadow:0 10px 24px rgba(0,0,0,.06); display:none }
+    .panel.show{ display:block }
+    .panel input{ width:100%; border:1px solid var(--line); border-radius:10px; padding:8px 10px; margin:8px 0 }
+    .row{ display:flex; gap:8px }
+
+    /* Output */
+    .result{ border:1px solid var(--line); border-radius:16px; padding:20px; background:#fff; margin-bottom:16px; position:relative }
+    .card-actions{ position:absolute; top:12px; right:12px; display:flex; gap:6px }
+
+    /* Notebook */
+    .note-item{ border:1px solid var(--line); border-radius:14px; padding:14px; background:#fff; margin-bottom:12px; position:relative }
+    .note-actions{ position:absolute; top:12px; right:12px; display:flex; gap:6px }
+
+    .muted{ color:var(--muted) }
+
+    /* Segmented control (slider pill) */
+    .seg{ display:inline-flex; align-items:center; padding:4px; background:#0a0a0a; color:#fff; border-radius:999px; position:relative }
+    .seg button{ position:relative; z-index:1; border:0; background:transparent; color:#fff; padding:6px 14px; border-radius:999px; cursor:pointer; font-weight:600 }
+    .seg .knob{ position:absolute; top:4px; bottom:4px; width:50%; background:#fff; border-radius:999px; transition:transform .2s ease; }
+    .seg[data-tab="finished"] .knob{ transform:translateX(100%); }
+    .seg .label{ color:#fff }
+    .seg[data-tab="concepts"] .label:first-of-type{ color:#000 }
+    .seg[data-tab="finished"] .label:last-of-type{ color:#000 }
+
+    /* Collections (extra tabs like Biomes etc.) */
+    .collections{ display:flex; gap:8px; align-items:center }
+    .pill{ border:1px solid var(--line); padding:6px 10px; border-radius:999px; cursor:pointer; background:#fff }
+    .pill.active{ background:#000; color:#fff }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">Valaria Forge</div>
+    <nav class="nav">
+      <a id="navHome" href="#" class="active" data-view="home">
+        <!-- Sprout icon for Flora & Fauna -->
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22V12"/>
+          <path d="M12 12c-6 0-8-6-8-6s6-2 8 4"/>
+          <path d="M12 12c6 0 8-6 8-6s-6-2-8 4"/>
+        </svg>
+        <span>Flora & Fauna</span>
+      </a>
+      <a id="navNotebook" href="#" data-view="notebook">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 3h10a3 3 0 0 1 3 3v14l-4-2-4 2-4-2-4 2V6a3 3 0 0 1 3-3z"/>
+        </svg>
+        <span>Notebook</span>
+      </a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <header>
+      <h1 id="title">Flora & Fauna</h1>
+      <div id="modeBadge" class="muted"></div>
+    </header>
+
+    <!-- HOME -->
+    <div class="container" id="view-home">
+      <div class="controls" id="generatorControls">
+        <!-- Type buttons -->
+        <div class="type-buttons" title="Set type">
+          <button class="circle-btn" id="btnAnimal" aria-pressed="false" title="Animal">
+            <!-- paw icon -->
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="6" cy="7.5" r="1.5"/>
+              <circle cx="9.5" cy="6" r="1.5"/>
+              <circle cx="14.5" cy="6" r="1.5"/>
+              <circle cx="18" cy="7.5" r="1.5"/>
+              <path d="M12 10.5c-3.2 0-6 2.5-6 5 0 2.2 2.2 3.5 6 3.5s6-1.3 6-3.5c0-2.5-2.8-5-6-5z"/>
+            </svg>
+          </button>
+          <button class="circle-btn" id="btnPlant" aria-pressed="false" title="Plant">
+            <!-- leaf icon -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22V12"/>
+              <path d="M12 12c-6 0-8-6-8-6s6-2 8 4"/>
+              <path d="M12 12c6 0 8-6 8-6s-6-2-8 4"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Manual trait entry -->
+        <div class="dropdown">
+          <button class="icon-btn" id="manualBtn" title="Add traits">
+            <!-- DNA double-helix -->
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 4c3 2 9 8 12 10"/>
+              <path d="M18 4c-3 2-9 8-12 10"/>
+              <path d="M6 20c3-2 9-8 12-10"/>
+              <path d="M18 20c-3-2-9-8-12-10"/>
+              <path d="M8 7h8"/>
+              <path d="M8 12h8"/>
+              <path d="M8 17h8"/>
+            </svg>
+          </button>
+          <div class="panel" id="manualPanel">
+            <strong>Add trait</strong>
+            <input id="traitInput" placeholder="e.g., bioluminescent" />
+            <div class="row">
+              <button class="btn" id="addAnimal">To Animal</button>
+              <button class="btn" id="addPlant">To Plant</button>
+            </div>
+            <p class="muted" style="margin-top:8px">Traits are lowercased, de-duplicated, and kept in-memory.</p>
+          </div>
+        </div>
+
+        <button class="btn" id="genBtn">Generate</button>
+      </div>
+      <div id="output"></div>
+    </div>
+
+    <!-- NOTEBOOK -->
+    <div class="container" id="view-notebook" style="display:none">
+      <div class="controls" style="justify-content:space-between">
+        <div class="collections" id="collections"></div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <div class="seg" id="nbSeg" data-tab="concepts" aria-label="Concepts / Finished toggle">
+            <div class="knob"></div>
+            <button class="label" data-tab="concepts">Concepts</button>
+            <button class="label" data-tab="finished">Finished</button>
+          </div>
+          <button class="icon-btn" id="exportNotes" title="Export" style="color:#000">
+            <!-- arrow up from tray -->
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 16V5"/>
+              <path d="M8 9l4-4 4 4"/>
+              <path d="M5 19h14"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div id="notes"></div>
+      <p class="muted" id="emptyNotes" style="display:none">No saved concepts yet.</p>
+    </div>
+  </main>
+
+  <script>
+/* --- DEDUPE GUARD --- */
+(function(){
+  const rmExtras = sel => { const nodes = document.querySelectorAll(sel); for (let i = 1; i < nodes.length; i++) nodes[i].remove(); };
+  ['aside.sidebar','main.main','#view-home','#view-notebook'].forEach(rmExtras);
+  if (window.__VALARIA_INIT__) { throw new Error('Valaria: duplicate init prevented'); }
+  window.__VALARIA_INIT__ = true;
+})();
+
+const $ = id => document.getElementById(id);
+
+/* ===== Views / Nav ===== */
+const views = { home: $('view-home'), notebook: $('view-notebook') };
+function setView(v){
+  for (const k in views) views[k].style.display = (k===v) ? 'block' : 'none';
+  document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('active', a.dataset.view===v));
+  $('title').textContent = v==='notebook' ? 'Notebook' : 'Flora & Fauna';
+}
+$('navHome').addEventListener('click', e => { e.preventDefault(); setView('home'); });
+$('navNotebook').addEventListener('click', e => { e.preventDefault(); setView('notebook'); });
+setView('home');
+
+/* ===== Traits ===== */
+const traits = {
+  animal: ['scaled','feathered','furred','horned','winged','gilled','armored','spiked','nocturnal','luminous'],
+  plant:  ['thorny','flowering','climbing','spreading','towering','mossy','waxy','glowing','striped','iridescent']
+};
+const norm = s => String(s||'').trim().toLowerCase();
+const addTrait = (type, t) => { const v = norm(t); if(!v) return; if(!traits[type].includes(v)){ traits[type].push(v); traits[type].sort((a,b)=>a.localeCompare(b)); } };
+
+/* Type buttons */
+let selectedType = null; // null = Auto
+const btnAnimal = $('btnAnimal');
+const btnPlant  = $('btnPlant');
+function syncTypeButtons(){
+  btnAnimal.classList.toggle('active', selectedType==='animal');
+  btnPlant .classList.toggle('active', selectedType==='plant');
+  btnAnimal.setAttribute('aria-pressed', selectedType==='animal');
+  btnPlant .setAttribute('aria-pressed', selectedType==='plant');
+}
+btnAnimal.addEventListener('click', ()=>{ selectedType = (selectedType==='animal')?null:'animal'; syncTypeButtons(); });
+btnPlant .addEventListener('click', ()=>{ selectedType = (selectedType==='plant') ?null:'plant';  syncTypeButtons(); });
+syncTypeButtons();
+
+/* Manual trait dropdown */
+const manualBtn = $('manualBtn');
+const manualPanel = $('manualPanel');
+manualBtn.addEventListener('click', (e)=>{ e.stopPropagation(); manualPanel.classList.toggle('show'); });
+document.addEventListener('click', ()=> manualPanel.classList.remove('show'));
+manualPanel.addEventListener('click', e=>e.stopPropagation());
+$('addAnimal').addEventListener('click', ()=>{ addTrait('animal', $('traitInput').value); $('traitInput').value=''; });
+$('addPlant') .addEventListener('click', ()=>{ addTrait('plant',  $('traitInput').value);  $('traitInput').value=''; });
+$('traitInput').addEventListener('keydown', e=>{ if(e.key==='Enter'){ addTrait(selectedType||'animal', $('traitInput').value); $('traitInput').value=''; }});
+
+/* ===== Collections (Notebook tabs like Biomes) ===== */
+const LS_COLS = 'valaria_cols_v1';
+function loadCols(){ try{ return JSON.parse(localStorage.getItem(LS_COLS)||'["Main"]'); }catch{ return ['Main']; } }
+function saveCols(cols){ localStorage.setItem(LS_COLS, JSON.stringify(cols)); }
+let collections = loadCols();
+let currentCollection = collections[0] || 'Main';
+function renderCollections(){
+  const c=$('collections'); c.innerHTML='';
+  collections.forEach(name=>{
+    const b=document.createElement('div'); b.className='pill'+(name===currentCollection?' active':''); b.textContent=name; 
+    b.addEventListener('click',()=>{ currentCollection=name; renderCollections(); renderNotes(); }); 
+    c.appendChild(b);
+  });
+  const add=document.createElement('button'); add.className='icon-btn'; add.title='Add collection'; add.innerHTML='+'; 
+  add.addEventListener('click',()=>{ const n=prompt('New collection name (e.g., Biomes)'); if(!n) return; if(!collections.includes(n)){ collections.push(n); saveCols(collections); currentCollection=n; renderCollections(); renderNotes(); } }); 
+  c.appendChild(add);
+}
+renderCollections();
+
+/* ===== Notebook storage (Concepts / Finished) ===== */
+const LS_SAVED = 'valaria_saved_v7';
+function loadNotes(){ try{ return JSON.parse(localStorage.getItem(LS_SAVED)||'[]'); }catch{ return []; } }
+function writeNotes(list){ localStorage.setItem(LS_SAVED, JSON.stringify(list)); }
+function saveNotes(list){ writeNotes(list); renderNotes(); }
+function saveNote(obj){ const list = loadNotes(); list.unshift(obj); saveNotes(list); }
+function deleteNote(id){ saveNotes(loadNotes().filter(x=>x.id!==id)); }
+function upsertNote(id, patch){ const list=loadNotes(); const i=list.findIndex(x=>x.id===id); if(i>-1){ list[i]=Object.assign({},list[i],patch); writeNotes(list);} renderNotes(); }
+
+const seg=$('nbSeg');
+seg.addEventListener('click', e=>{ const tab=e.target.dataset.tab; if(!tab) return; seg.setAttribute('data-tab', tab); renderNotes(); });
+const getTab = () => seg.getAttribute('data-tab');
+
+function renderNotes(){
+  const tab = getTab()==='finished' ? 'finished' : 'concept';
+  const list = loadNotes().filter(n=> (n.collection||'Main')===currentCollection && (n.status||'concept')===tab);
+  const wrap = $('notes'); wrap.innerHTML='';
+  const empty = $('emptyNotes');
+  empty.textContent = (tab==='finished') ? 'No finished items yet.' : 'No saved concepts yet.';
+  empty.style.display = list.length ? 'none' : 'block';
+  list.forEach(n=>{
+    const item = document.createElement('div'); item.className='note-item';
+    item.innerHTML = `
+      <div class="note-actions">
+        <button class="icon-btn" data-act="copy" title="Copy" style="color:#000">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+        <button class="icon-btn" data-act="toggle" title="${(n.status||'concept')==='concept'?'Mark finished':'Move to concepts'}">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        </button>
+        <button class="icon-btn" data-act="del" title="Delete" style="color:#6b7280">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </div>
+      <strong>${n.name}</strong> · <span class="muted">${n.type}</span>
+      <div class="muted" style="margin:6px 0 8px">${(n.traits||[]).join(', ')}</div>
+      <div>${n.text}</div>`;
+    item.querySelector('[data-act="del"]').addEventListener('click', ()=>deleteNote(n.id));
+    item.querySelector('[data-act="copy"]').addEventListener('click', ()=>navigator.clipboard.writeText(`${n.name} (${n.type})
+Traits: ${(n.traits||[]).join(', ')}
+${n.text}`));
+    item.querySelector('[data-act="toggle"]').addEventListener('click', ()=> upsertNote(n.id, { status: (n.status||'concept')==='concept'?'finished':'concept' }));
+    wrap.appendChild(item);
+  });
+}
+renderNotes();
+
+/* ===== AI settings ===== */
+const LS_AI = 'valaria_ai_v2';
+function loadAI(){ try{ return JSON.parse(localStorage.getItem(LS_AI)||'{}'); }catch{ return {}; } }
+function saveAI(obj){ localStorage.setItem(LS_AI, JSON.stringify(obj)); }
+let ai = Object.assign({ base:'http://localhost:11434', genModel:'gemma:2b', demo:true }, loadAI());
+function syncBadge(){ $('modeBadge').textContent = ai.demo ? 'Demo mode: local generation (no network).' : 'Ollama mode: using local model.'; }
+syncBadge();
+
+/* ===== Ollama helpers (kept for generator) ===== */
+async function callOllamaChat(model, messages){
+  const res = await fetch(ai.base.replace(/\/$/,'')+'/api/chat', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ model, messages, stream:false }) });
+  if(!res.ok) throw new Error('Ollama HTTP '+res.status);
+  return res.json();
+}
+
+/* ===== Idea generation (gemma:2b by default) ===== */
+async function aiDescribeOne(type, pair){
+  if(ai.demo){
+    const fabricate=(t,[a,b])=>{
+      const sentences=[
+        `Born of cliffs and fog, it wears its ${a} heritage like heraldry.`,
+        `A subtle ${b} sheen betrays an older lineage.`,
+        `It moves with a patience that unsettles hunters.`,
+        `Old routes bend around its territory; even rivers seem to slow.`,
+        `When threatened, it reveals a trick learned from harsher ages.`,
+        `Villagers keep a name for it and a respectful distance.`
+      ];
+      return sentences.slice(0,5+Math.floor(Math.random()*2)).join(' ');
+    };
+    return { id: Date.now()+':'+Math.random().toString(36).slice(2,8), name:(type==='animal'?'Creature':'Plant')+' '+Math.random().toString(36).slice(2,7).toUpperCase(), type, traits: pair, text: fabricate(type,pair), status:'concept', collection: currentCollection };
+  }
+  const system='You are a lore writer for a fantasy world named Valaria.';
+  const user=`Create exactly ONE ${type} concept using these traits: ${pair.join(', ')}.\nReturn JSON ONLY with keys: name, desc.\nname: a striking, original 1–3 word proper name.\ndesc: 5–7 sentences on appearance, behavior, abilities, habitat, and a vivid hook.`;
+  const json=await callOllamaChat(ai.genModel, [{role:'system',content:system},{role:'user',content:user}]);
+  let content=json?.message?.content||''; let parsed=null; 
+  try{ parsed=JSON.parse(content); }catch{ const f=content.indexOf('{'), l=content.lastIndexOf('}'); if(f>-1&&l>f){ try{ parsed=JSON.parse(content.slice(f,l+1)); }catch{} } }
+  if(parsed && parsed.name && parsed.desc){ return { id: Date.now()+':'+Math.random().toString(36).slice(2,8), name: parsed.name, type, traits: pair, text: parsed.desc, status:'concept', collection: currentCollection }; }
+  throw new Error('Bad AI response');
+}
+
+function renderCard(obj){
+  const div=document.createElement('div'); div.className='result';
+  div.innerHTML=`<div class="card-actions"><button class="btn subtle" data-act="save">Save</button></div><h3>${obj.name}</h3><p><strong>Type:</strong> ${obj.type}</p><p><strong>Traits:</strong> ${(obj.traits||[]).join(', ')}</p><p>${obj.text}</p>`;
+  const saveBtn=div.querySelector('[data-act="save"]');
+  saveBtn.addEventListener('click',()=>{ saveNote(obj); saveBtn.textContent='Saved'; saveBtn.disabled=true; saveBtn.classList.add('disabled'); });
+  return div;
+}
+
+$('genBtn').addEventListener('click', async ()=>{
+  const holder=$('output'); holder.innerHTML='<div class="muted">'+(ai.demo?'Demo mode—no network.':'Generating with AI…')+'</div>';
+  const tasks=[]; const count=5;
+  for(let i=0;i<count;i++){
+    const t=selectedType || (Math.random()>0.5?'animal':'plant');
+    const pool=traits[t]; const t1=pool[Math.floor(Math.random()*pool.length)], t2=pool[Math.floor(Math.random()*pool.length)];
+    tasks.push(aiDescribeOne(t,[t1,t2]).catch(e=>({ id: Date.now()+':'+Math.random().toString(36).slice(2,8), name:(t==='animal'?'Creature':'Plant')+' '+Math.random().toString(36).slice(2,7).toUpperCase(), type:t, traits:[t1,t2], text:'(fallback) '+e, status:'concept', collection: currentCollection })));
+  }
+  const results=await Promise.all(tasks); holder.innerHTML=''; results.forEach(r=>holder.appendChild(renderCard(r)));
+});
+  </script>
+</body>
+</html>
